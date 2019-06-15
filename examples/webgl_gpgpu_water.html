@@ -20,6 +20,7 @@
 		<script src="js/libs/stats.min.js"></script>
 		<script src="js/libs/dat.gui.min.js"></script>
 		<script src="js/controls/OrbitControls.js"></script>
+		<script src="js/renderers/CSS2DRenderer.js"></script>
 		<script src="js/math/SimplexNoise.js"></script>
 
 		<script src="js/misc/GPUComputationRenderer.js"></script>
@@ -275,7 +276,7 @@
 			var BOUNDS_HALF = BOUNDS * 0.5;
 
 			var container, stats;
-			var camera, scene, renderer;
+			var camera, scene, renderer, labelRenderer;
 			var mouseMoved = false;
 			var mouseCoords = new THREE.Vector2();
 			var raycaster = new THREE.Raycaster();
@@ -343,7 +344,13 @@
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				container.appendChild( renderer.domElement );
 
-				var controls = new THREE.OrbitControls( camera, renderer.domElement );
+				labelRenderer = new THREE.CSS2DRenderer();
+				labelRenderer.setSize( window.innerWidth, window.innerHeight );
+				labelRenderer.domElement.style.position = 'absolute';
+				labelRenderer.domElement.style.top = 0;
+				document.body.appendChild( labelRenderer.domElement );
+
+				var controls = new THREE.OrbitControls( camera, labelRenderer.domElement );
 
 				stats = new Stats();
 				container.appendChild( stats.dom );
@@ -582,27 +589,59 @@
 
 			function createSpheres() {
 
-				var sphereTemplate = new THREE.Mesh( new THREE.SphereBufferGeometry( 4, 24, 12 ), new THREE.MeshPhongMaterial( { color: 0xFFFF00 } ) );
+				new THREE.ImageBitmapLoader()
+					.setOptions( { imageOrientation: 'flipY' } )
+					.load( 'textures/planets/earth_atmos_2048.jpg?' + performance.now(), function ( imageBitmap ) {
 
-				for ( var i = 0; i < NUM_SPHERES; i ++ ) {
+						var texture = new THREE.CanvasTexture( imageBitmap );
+						var material = new THREE.MeshBasicMaterial( { map: texture } );
 
-					var sphere = sphereTemplate;
-					if ( i < NUM_SPHERES - 1 ) {
+						/* ImageBitmap should be disposed when done with it
+						   Can't be done until it's actually uploaded to WebGLTexture */
 
-						sphere = sphereTemplate.clone();
+						// imageBitmap.close();
 
-				}
+						var sphereTemplate = new THREE.Mesh( new THREE.BoxBufferGeometry( 50, 50, 50 ), material );
 
-					sphere.position.x = ( Math.random() - 0.5 ) * BOUNDS * 0.7;
-					sphere.position.z = ( Math.random() - 0.5 ) * BOUNDS * 0.7;
+						for ( var i = 0; i < NUM_SPHERES; i ++ ) {
 
-					sphere.userData.velocity = new THREE.Vector3();
+							var sphere = sphereTemplate;
+							if ( i < NUM_SPHERES - 1 ) {
 
-					scene.add( sphere );
+									sphere = sphereTemplate.clone();
 
-					spheres[ i ] = sphere;
+							}
 
-				}
+							sphere.position.x = ( Math.random() - 0.5 ) * BOUNDS * 0.7;
+							sphere.position.z = ( Math.random() - 0.5 ) * BOUNDS * 0.7;
+
+							sphere.userData.velocity = new THREE.Vector3();
+
+							var earthDiv = document.createElement( 'div' );
+							earthDiv.className = 'label';
+							earthDiv.textContent = 'Earth ' + i;
+							earthDiv.style.marginTop = '-1em';
+							var earthLabel = new THREE.CSS2DObject( earthDiv );
+							earthLabel.position.set( 0, 60, 0 );
+							sphere.add( earthLabel );
+
+							scene.add( sphere );
+
+							spheres[ i ] = sphere;
+
+						}
+
+					}, function ( p ) {
+
+						console.log( p );
+
+					}, function ( e ) {
+
+						console.log( e );
+
+					} );
+
+				
 
 			}
 
@@ -771,7 +810,7 @@
 
 				// Render
 				renderer.render( scene, camera );
-
+				labelRenderer.render( scene, camera );
 			}
 
 		</script>
